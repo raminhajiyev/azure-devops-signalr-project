@@ -1,0 +1,59 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  imageName: 'signalr-chat-app'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: 'sdk'
+              version: '8.x'
+          - script: dotnet build --configuration Release --output $(Build.ArtifactStagingDirectory)/bin/Release
+            displayName: 'Build project'
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/bin/Release'
+              artifactName: 'drop'
+
+  - stage: Containerize
+    jobs:
+      - job: BuildAndPush
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            inputs:
+              command: buildAndPush
+              repository: 'miniprojectregistry.azurecr.io/$(imageName)'
+              dockerfile: '**/Dockerfile'
+              containerRegistry: 'AKS - case'  # Docker registry service connection
+              tags: |
+                $(Build.BuildId)
+
+  - stage: Deploy
+    jobs:
+      - job: DeployToAKS
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'AKS'  # AzureRM service connection for AKS access
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set the AKS context
+                az aks get-credentials --resource-group mini-project --name miniprojectcluster
+                
+                # Deploy the container to AKS
+                kubectl apply -f kubernetes/deployment.yaml
+                displayName: 'Deploy to AKS'
