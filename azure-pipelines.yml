@@ -4,7 +4,7 @@ trigger:
       - main
 
 variables:
-  imageName: 'azure-devops-sginalr'
+  imageName: 'signalr-chat-app'
 
 stages:
   - stage: Build
@@ -33,20 +33,27 @@ stages:
           - task: Docker@2
             inputs:
               command: buildAndPush
-              repository: '$(imageName)'
+              repository: 'miniprojectregistry.azurecr.io/$(imageName)'
               dockerfile: '**/Dockerfile'
-              containerRegistry: 'youracr.azurecr.io'
+              containerRegistry: 'AKS - case'  # Docker registry service connection
               tags: |
                 $(Build.BuildId)
-              
+
   - stage: Deploy
     jobs:
-      - job: DeployToAppService
+      - job: DeployToAKS
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: AzureWebAppContainer@1
+          - task: AzureCLI@2
             inputs:
-              azureSubscription: 'AKS'
-              appName: 'azure-devops-sginalr'
-              imageName: 'miniprojectregistry.azurecr.io/$(azure-devops-sginalr):$(Build.BuildId)'
+              azureSubscription: 'AKS'  # AzureRM service connection for AKS access
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set the AKS context
+                az aks get-credentials --resource-group mini-project --name miniprojectcluster
+                
+                # Deploy the container to AKS
+                kubectl apply -f kubernetes/deployment.yaml
+                displayName: 'Deploy to AKS'
