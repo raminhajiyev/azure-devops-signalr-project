@@ -56,4 +56,4 @@ stages:
                 
                 # Deploy the container to AKS
                 kubectl apply -f kubernetes/deployment.yaml
-                displayName: 'Deploy to AKS'
+                kubectl get deployments
