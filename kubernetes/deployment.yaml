@@ -1,0 +1,22 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signalr-chat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: signalr-chat
+  template:
+    metadata:
+      labels:
+        app: signalr-chat
+    spec:
+      containers:
+        - name: signalr-chat
+          image: miniprojectregistry.azurecr.io/signalr-chat:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: "ENVIRONMENT"
+              value: "production"
